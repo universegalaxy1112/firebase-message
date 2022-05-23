@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect, useRef} from "react";
 
 import { LoremIpsum } from "lorem-ipsum";
 
@@ -28,7 +28,8 @@ let firstTime = true;
 export default function App() {
   const [messages, setMessages] = useState({});
   const [userTotalVotes, setUserTotalVotes] = useState(0);
-
+  const init = useRef(true);
+  const init2 = useRef(true);
   // Generate some messages and votes in the database to start with.
   useEffect(() => {
     const generateMessages = async () => {
@@ -101,6 +102,7 @@ export default function App() {
         }
         return oMessages;
       });
+
     });
 
     const votesQuery = firebase.db
@@ -109,46 +111,46 @@ export default function App() {
     const votesSnapshot = votesQuery.onSnapshot((snapshot) => {
       const docChanges = snapshot.docChanges();
       setMessages((oldMessages) => {
+
         const oMessages = { ...oldMessages };
         for (let change of docChanges) {
           const voteData = change.doc.data();
-          if (voteData.messageId in oMessages) {
-            setUserTotalVotes((oldUserTotalVotes) => {
-              console.log({
-                oldUserTotalVotes,
-                mUserVote: oMessages[voteData.messageId].userVote,
-                vUserVote: voteData.userVote
-              });
-              if (oMessages[voteData.messageId].userVote) {
-                if (voteData.userVote) {
-                  return oldUserTotalVotes;
-                }
-                return oldUserTotalVotes - 1;
-              }
+          const itemId = voteData.messageId;
+          const newVote = voteData.userVote;
+
+          setUserTotalVotes((oldUserTotalVotes) => {
+            const oMessages = { ...oldMessages };
+            if (oMessages[itemId].userVote) {
               if (voteData.userVote) {
-                return oldUserTotalVotes + 1;
+                return oldUserTotalVotes;
               }
-              return oldUserTotalVotes;
-            });
+              return oldUserTotalVotes - 1;
+            }
+
+            if (newVote) {
+              return oldUserTotalVotes + 1;
+            }
+            return oldUserTotalVotes;
+
+          })
+          if (voteData.messageId in oMessages) {
             oMessages[voteData.messageId] = {
               ...oMessages[voteData.messageId],
               voter: voteData.voter,
               userVote: voteData.userVote
             };
           } else {
-            setUserTotalVotes((oldUserTotalVotes) => {
-              console.log("Incrementing userTotalVotes");
-              return oldUserTotalVotes + voteData.userVote;
-            });
             oMessages[voteData.messageId] = {
               voter: voteData.voter,
               userVote: voteData.userVote
             };
           }
+
         }
         return oMessages;
       });
     });
+
     return () => {
       messagesSnapshot();
       votesSnapshot();
